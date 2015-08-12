@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<thing:thing-descriptions bindingId="enocean"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:thing="http://eclipse.org/smarthome/schemas/thing-description/v1.0.0"
+	xsi:schemaLocation="http://eclipse.org/smarthome/schemas/thing-description/v1.0.0 http://eclipse.org/smarthome/schemas/thing-description-1.0.0.xsd">
+
+	<!-- Sample Thing Type -->
+	<thing-type id="F6-02-01">
+		<label>F6-02-01 Rocker Switch</label>
+		<description>A rocker switch according EnOcean profile F6-02-01</description>
+
+		<channels>
+			<channel id="switchA" typeId="switch" />
+			<channel id="switchB" typeId="switch" />
+		</channels>
+		<config-description>
+			<parameter name="localID" type="text">
+				<label>Local ID</label>
+				<description>ID used for sending from openHAB (has to be between BaseID of the TCM300 chip + 1 up to +127)</description>
+				<required>false</required>
+				<default>F6339211</default>
+			</parameter>
+		</config-description>
+	</thing-type>
+
+	<thing-type id="A5-10-03">
+		<label>A5-10-03 Room Operating Unit</label>
+		<description>A Room Operating Unit according EnOcean profile A5-10-03</description>
+
+		<channels>
+			<channel id="temperature" typeId="temperature" />
+			<channel id="setpoint" typeId="setpoint" />
+		</channels>
+	</thing-type>
+
+
+	<!-- Switch Channel Type -->
+	<channel-type id="switch">
+		<item-type>Switch</item-type>
+		<label>Switch</label>
+		<description>Switch</description>
+		<state readOnly="false" />
+	</channel-type>
+
+	<!-- Temperature Channel Type -->
+	<channel-type id="temperature">
+		<item-type>Number</item-type>
+		<label>Temperature</label>
+		<description>Temperature</description>
+		<category>Temperature</category>
+		<state pattern="%.1f °C" readOnly="true" />
+	</channel-type>
+
+	<!-- SetPoint Channel Type -->
+	<channel-type id="setpoint">
+		<item-type>Number</item-type>
+		<label>Set Point</label>
+		<description>Temperature Set Point</description>
+		<state min="18" max="25" step="0.5" pattern="%.1f °C" readOnly="false" />
+	</channel-type>
+
+	
+</thing:thing-descriptions>
