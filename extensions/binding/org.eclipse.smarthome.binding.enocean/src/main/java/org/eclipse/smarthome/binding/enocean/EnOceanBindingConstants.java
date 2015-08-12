@@ -31,4 +31,6 @@ public class EnOceanBindingConstants {
     public final static String CHANNEL_TEMPERATURE = "temperature";
     public final static String CHANNEL_SET_POINT = "setPoint";
 
+    public static final String CONFIG_PROPERTY_DEVICE_ID = "DEVICE_ID";
+
 }
