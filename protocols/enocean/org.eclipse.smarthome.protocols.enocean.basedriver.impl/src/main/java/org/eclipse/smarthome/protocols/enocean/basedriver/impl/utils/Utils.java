@@ -261,4 +261,12 @@ public class Utils {
         }
         return padded;
     }
+
+    /**
+     * @param chipId
+     * @return printUid
+     */
+    public static String printUid(int chipId) {
+        return "'0x" + bytesToHexString(intTo4Bytes(chipId)) + "'";
+    }
 }

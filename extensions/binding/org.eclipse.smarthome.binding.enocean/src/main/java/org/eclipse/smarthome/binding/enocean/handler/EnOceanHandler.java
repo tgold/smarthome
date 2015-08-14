@@ -105,7 +105,7 @@ public class EnOceanHandler extends BaseThingHandler implements org.osgi.service
 
                 @Override
                 public int getSenderId() {
-                    return Integer.decode("0x" + (String) getThing().getConfiguration().get("localID"));
+                    return Integer.decode("0X" + (String) getThing().getConfiguration().get("localID"));
                 }
 
                 @Override
@@ -218,170 +218,178 @@ public class EnOceanHandler extends BaseThingHandler implements org.osgi.service
             String displayId = Utils.printUid(Integer.parseInt(chipId));
             String profile = rorg + "/" + func + "/" + type;
             logger.debug("> MSG_RECEIVED event : sender=" + displayId + ", profile = '" + profile + "'");
-            logger.debug(
-                    "Try to identify the device that has sent the just received event (e.g. is it an A5-10-03 device - a temperature sensor range 0°C to +40°C and a temperature set point).");
-            if ("165".equals(rorg)) {
-                // hex 0xa5 == int 165.
-                if ("10".equals(func)) {
-                    if ("3".equals(type)) {
-                        logger.debug("This event has been sent by an A5-10-03 device.");
-                        logger.debug(
-                                "The end of page 12, and the beginning of page 13 of EnOcean_Equipment_Profiles_EEP_V2.61_public.pdf specifies how to get the temp°C value starting from an EnOcean telegram.");
-                        // propertyNames[4]: enocean.message,
-                        // event.getProperty(propertyNames[4]):
-                        // a5000035080088dcf100
-                        byte[] payload = data.getPayloadBytes();
-                        logger.debug("payload: " + payload + ", payload.length: " + payload.length);
-                        int j = 0;
-                        while (j < payload.length) {
-                            logger.debug("payload[" + j + "]: " + payload[j]);
-                            j = j + 1;
-                        }
-                        byte rawTemperatureDB1InHexAsAByte = payload[2];
-                        float rawTemperatureDB1InNumberAsADouble = rawTemperatureDB1InHexAsAByte;
-                        logger.debug("rawTemperatureDB1InNumberAsADouble: " + rawTemperatureDB1InNumberAsADouble);
-                        if (rawTemperatureDB1InNumberAsADouble < 0) {
+
+            // check if the message was sent from "our thing"
+            if (displayId.equalsIgnoreCase(
+                    "0x" + thing.getConfiguration().get(EnOceanBindingConstants.CONFIG_PROPERTY_DEVICE_ID))) {
+                logger.debug(
+                        "Try to identify the device that has sent the just received event (e.g. is it an A5-10-03 device - a temperature sensor range 0°C to +40°C and a temperature set point).");
+                if ("165".equals(rorg)) {
+                    // hex 0xa5 == int 165.
+                    if ("10".equals(func)) {
+                        if ("3".equals(type)) {
+                            logger.debug("This event has been sent by an A5-10-03 device.");
                             logger.debug(
-                                    "rawTemperatureDB1InNumberAsADouble is negative, so let's convert rawTemperatureDB1InNumberAsADouble to unsigned 0..255 value instead of -127..128 one.");
-                            rawTemperatureDB1InNumberAsADouble = rawTemperatureDB1InNumberAsADouble * -1
-                                    + 2 * (128 + rawTemperatureDB1InNumberAsADouble);
+                                    "The end of page 12, and the beginning of page 13 of EnOcean_Equipment_Profiles_EEP_V2.61_public.pdf specifies how to get the temp°C value starting from an EnOcean telegram.");
+                            // propertyNames[4]: enocean.message,
+                            // event.getProperty(propertyNames[4]):
+                            // a5000035080088dcf100
+                            byte[] payload = data.getPayloadBytes();
+                            logger.debug("payload: " + payload + ", payload.length: " + payload.length);
+                            int j = 0;
+                            while (j < payload.length) {
+                                logger.debug("payload[" + j + "]: " + payload[j]);
+                                j = j + 1;
+                            }
+                            byte rawTemperatureDB1InHexAsAByte = payload[2];
+                            float rawTemperatureDB1InNumberAsADouble = rawTemperatureDB1InHexAsAByte;
                             logger.debug("rawTemperatureDB1InNumberAsADouble: " + rawTemperatureDB1InNumberAsADouble);
+                            if (rawTemperatureDB1InNumberAsADouble < 0) {
+                                logger.debug(
+                                        "rawTemperatureDB1InNumberAsADouble is negative, so let's convert rawTemperatureDB1InNumberAsADouble to unsigned 0..255 value instead of -127..128 one.");
+                                rawTemperatureDB1InNumberAsADouble = rawTemperatureDB1InNumberAsADouble * -1
+                                        + 2 * (128 + rawTemperatureDB1InNumberAsADouble);
+                                logger.debug(
+                                        "rawTemperatureDB1InNumberAsADouble: " + rawTemperatureDB1InNumberAsADouble);
+                            } else {
+                                logger.debug("rawTemperatureDB1InNumberAsADouble is positive, everything is ok.");
+                            }
+
+                            // Now let's apply the formula:
+                            // (rawTemperatureDB1InNumberAsADouble-255)*-40/255+0 =
+                            // temp in celsius.
+                            double tempInCelsius = (rawTemperatureDB1InNumberAsADouble - 255) * -40 / 255 + 0;
+                            updateState(
+                                    new ChannelUID(getThing().getUID(), EnOceanBindingConstants.CHANNEL_TEMPERATURE),
+                                    new DecimalType(tempInCelsius));
+                            logger.debug("tempInCelsius: " + tempInCelsius);
                         } else {
-                            logger.debug("rawTemperatureDB1InNumberAsADouble is positive, everything is ok.");
+                            logger.debug("This event has NOT been sent by an A5-02-05 device. TYPE is NOT equal to 5.");
                         }
-
-                        // Now let's apply the formula:
-                        // (rawTemperatureDB1InNumberAsADouble-255)*-40/255+0 =
-                        // temp in celsius.
-                        double tempInCelsius = (rawTemperatureDB1InNumberAsADouble - 255) * -40 / 255 + 0;
-                        updateState(new ChannelUID(getThing().getUID(), EnOceanBindingConstants.CHANNEL_TEMPERATURE),
-                                new DecimalType(tempInCelsius));
-                        logger.debug("tempInCelsius: " + tempInCelsius);
                     } else {
-                        logger.debug("This event has NOT been sent by an A5-02-05 device. TYPE is NOT equal to 5.");
+                        logger.debug("This event has NOT been sent by an A5-02-05 device. FUNC is NOT equal to 2.");
+                    }
+                } else if ("246".equals(rorg)) {
+                    // hex 0xf6 == int 246.
+                    logger.debug("This event has been sent by an F6-wx-yz device.");
+                    logger.debug(
+                            "FUNC, and TYPE are NOT sent by F6-wx-yz device. The system then assumes that the device is an F6-02-01.");
+                    logger.debug(
+                            "In EnOcean_Equipment_Profiles_EEP_V2.61_public.pdf, pages 13-14, F6-02-01 -> RPS Telegram, Rocker Switch, 2 Rocker, Light and Blind Control - Application Style 1");
+
+                    // byte[] payload = data.getPayloadBytes(); using
+                    // getPayloadBytes() is NOT enough here.
+                    byte[] payload = data.getBytes();
+                    // e.g. f6500029219f3003ffffffff3100 when the button BI of an
+                    // F6-02-01 device is pressed.
+
+                    logger.debug("payload: " + payload + ", payload.length: " + payload.length);
+                    int j = 0;
+                    while (j < payload.length) {
+                        logger.debug("payload[" + j + "] & 0xff (value is displayed as an unsigned int): "
+                                + (payload[j] & 0xff));
+                        j = j + 1;
+                    }
+
+                    byte dataDB0InHexAsAByte = payload[1];
+                    logger.debug("dataDB0InHexAsAByte: " + dataDB0InHexAsAByte);
+                    int dataDB0InHexAsAnInt = dataDB0InHexAsAByte & 0xff;
+                    logger.debug("dataDB0InHexAsAnInt: " + dataDB0InHexAsAnInt);
+
+                    byte statusInHexAsAByte = payload[6];
+                    logger.debug("statusInHexAsAByte: " + statusInHexAsAByte);
+                    int statusInHexAsAsAnInt = statusInHexAsAByte & 0xff;
+                    logger.debug("statusInHexAsAsAnInt: " + statusInHexAsAsAnInt);
+
+                    if ((new Integer(0x30).byteValue() & 0xff) == statusInHexAsAsAnInt) {
+                        logger.debug("Here, a button has been pressed.");
+                        if ((new Integer(0x30).byteValue() & 0xff) == dataDB0InHexAsAnInt) {
+                            // Check if A0 button has been pressed --> 0x30
+                            logger.debug("A0");
+                            updateState(new ChannelUID(getThing().getUID(), EnOceanBindingConstants.CHANNEL_SWITCH_A),
+                                    OnOffType.OFF);
+                        } else if ((new Integer(0x10).byteValue() & 0xff) == dataDB0InHexAsAnInt) {
+                            // Check if AI button has been pressed --> 0x10
+                            logger.debug("AI");
+                            updateState(new ChannelUID(getThing().getUID(), EnOceanBindingConstants.CHANNEL_SWITCH_A),
+                                    OnOffType.ON);
+                        } else if ((new Integer(0x70).byteValue() & 0xff) == dataDB0InHexAsAnInt) {
+                            // Check if A0 button has been pressed --> 0x70
+                            logger.debug("B0");
+                            updateState(new ChannelUID(getThing().getUID(), EnOceanBindingConstants.CHANNEL_SWITCH_B),
+                                    OnOffType.OFF);
+                        } else if ((new Integer(0x50).byteValue() & 0xff) == dataDB0InHexAsAnInt) {
+                            // Check if A0 button has been pressed --> 0x50
+                            logger.debug("BI");
+                            // The switch is used to simulate the smoke
+                            updateState(new ChannelUID(getThing().getUID(), EnOceanBindingConstants.CHANNEL_SWITCH_B),
+                                    OnOffType.ON);
+                        } else {
+                            logger.debug("The given Data DB_0 is UNKNOWN; its value is: " + dataDB0InHexAsAnInt);
+                        }
+                    } else if ((new Integer(0x20).byteValue() & 0xff) == statusInHexAsAsAnInt) {
+                        logger.debug("Here, a button has been released (normally, this button was the pressed one.)");
+                        // if (alarmIsActive) {
+                        // // The switch is used to simulate the smoke
+                        // // detector.
+                        // // No Alarm
+                        // logger.debug("No ALARM");
+                        //// reportFireNormalSituation();
+                        //// alarmIsActive = false;
+                        // }
+                    } else {
+                        logger.debug(
+                                "The given status field of this RPS telegram is UNKNOWN. This status was (as an int): "
+                                        + statusInHexAsAsAnInt);
+                    }
+
+                } else if ("213".equals(rorg)) {
+                    // hex 0xd5 == int 213.
+                    logger.debug("This event has been sent by a D5-wx-yz device.");
+                    logger.debug(
+                            "FUNC, and TYPE are NOT sent by D5-wx-yz device. The system then assumes that the device is an D5-00-01.");
+                    logger.debug(
+                            "In EnOcean_Equipment_Profiles_EEP_V2.61_public.pdf, pages 24, D5-00-01 -> 1BS Telegram, Contacts and Switches, Single Input Contact.");
+
+                    // logger.debug("data.getBytes(): " + data.getBytes());
+                    // logger.debug("Utils.bytesToHexString(data.getBytes()): "
+                    // + Utils.bytesToHexString(data.getBytes()));
+                    //
+                    // logger.debug("data.getDbm(): " + data.getDbm());
+                    // logger.debug("data.getDestinationId(): "
+                    // + data.getDestinationId());
+                    // logger.debug("data.getFunc(): " + data.getFunc());
+                    //
+                    // logger.debug("data.getPayloadBytes(): "
+                    // + data.getPayloadBytes());
+                    // Logger.d(TAG,
+                    // "Utils.bytesToHexString(data.getPayloadBytes()): "
+                    // + Utils.bytesToHexString(data.getPayloadBytes()));
+                    //
+                    // logger.debug("data.getRorg(): " + data.getRorg());
+                    // logger.debug("data.getSecurityLevelFormat(): "
+                    // + data.getSecurityLevelFormat());
+                    // logger.debug("data.getSenderId(): " + data.getSenderId());
+                    // logger.debug("data.getStatus(): " + data.getStatus());
+                    // logger.debug("data.getSubTelNum(): " + data.getSubTelNum());
+                    // logger.debug("data.getType(): " + data.getType());
+
+                    if (8 == data.getPayloadBytes()[0]) {
+                        logger.debug("An opening has been detected.");
+                    } else if (9 == data.getPayloadBytes()[0]) {
+                        logger.debug("A closing has been detected.");
+                    } else if (0 == data.getPayloadBytes()[0]) {
+                        logger.debug("The LRN button has been pressed.");
+                    } else {
+                        logger.debug("The given 1BS's Data DB_0 value (data.getPayloadBytes()[0]: "
+                                + data.getPayloadBytes()[0]
+                                + " doesn't correspond to anything in EnOcean's specs. There is a pb. The system doesn't know how to handle this message.");
                     }
                 } else {
-                    logger.debug("This event has NOT been sent by an A5-02-05 device. FUNC is NOT equal to 2.");
+                    logger.debug(
+                            "This event has NOT been sent by an A5-02-05 device, nor by a F6-wx-yz device, nor by a D5-wx-yz device. "
+                                    + "RORG is NOT equal to a5, nor f6,nor d5 (0xa5 is equal to int 165; 0xf6 -> 246, 0xd5 -> 213).");
                 }
-            } else if ("246".equals(rorg)) {
-                // hex 0xf6 == int 246.
-                logger.debug("This event has been sent by an F6-wx-yz device.");
-                logger.debug(
-                        "FUNC, and TYPE are NOT sent by F6-wx-yz device. The system then assumes that the device is an F6-02-01.");
-                logger.debug(
-                        "In EnOcean_Equipment_Profiles_EEP_V2.61_public.pdf, pages 13-14, F6-02-01 -> RPS Telegram, Rocker Switch, 2 Rocker, Light and Blind Control - Application Style 1");
-
-                // byte[] payload = data.getPayloadBytes(); using
-                // getPayloadBytes() is NOT enough here.
-                byte[] payload = data.getBytes();
-                // e.g. f6500029219f3003ffffffff3100 when the button BI of an
-                // F6-02-01 device is pressed.
-
-                logger.debug("payload: " + payload + ", payload.length: " + payload.length);
-                int j = 0;
-                while (j < payload.length) {
-                    logger.debug("payload[" + j + "] & 0xff (value is displayed as an unsigned int): "
-                            + (payload[j] & 0xff));
-                    j = j + 1;
-                }
-
-                byte dataDB0InHexAsAByte = payload[1];
-                logger.debug("dataDB0InHexAsAByte: " + dataDB0InHexAsAByte);
-                int dataDB0InHexAsAnInt = dataDB0InHexAsAByte & 0xff;
-                logger.debug("dataDB0InHexAsAnInt: " + dataDB0InHexAsAnInt);
-
-                byte statusInHexAsAByte = payload[6];
-                logger.debug("statusInHexAsAByte: " + statusInHexAsAByte);
-                int statusInHexAsAsAnInt = statusInHexAsAByte & 0xff;
-                logger.debug("statusInHexAsAsAnInt: " + statusInHexAsAsAnInt);
-
-                if ((new Integer(0x30).byteValue() & 0xff) == statusInHexAsAsAnInt) {
-                    logger.debug("Here, a button has been pressed.");
-                    if ((new Integer(0x30).byteValue() & 0xff) == dataDB0InHexAsAnInt) {
-                        // Check if A0 button has been pressed --> 0x30
-                        logger.debug("A0");
-                        updateState(new ChannelUID(getThing().getUID(), EnOceanBindingConstants.CHANNEL_SWITCH_A),
-                                OnOffType.OFF);
-                    } else if ((new Integer(0x10).byteValue() & 0xff) == dataDB0InHexAsAnInt) {
-                        // Check if AI button has been pressed --> 0x10
-                        logger.debug("AI");
-                        updateState(new ChannelUID(getThing().getUID(), EnOceanBindingConstants.CHANNEL_SWITCH_A),
-                                OnOffType.ON);
-                    } else if ((new Integer(0x70).byteValue() & 0xff) == dataDB0InHexAsAnInt) {
-                        // Check if A0 button has been pressed --> 0x70
-                        logger.debug("B0");
-                        updateState(new ChannelUID(getThing().getUID(), EnOceanBindingConstants.CHANNEL_SWITCH_B),
-                                OnOffType.OFF);
-                    } else if ((new Integer(0x50).byteValue() & 0xff) == dataDB0InHexAsAnInt) {
-                        // Check if A0 button has been pressed --> 0x50
-                        logger.debug("BI");
-                        // The switch is used to simulate the smoke
-                        updateState(new ChannelUID(getThing().getUID(), EnOceanBindingConstants.CHANNEL_SWITCH_B),
-                                OnOffType.ON);
-                    } else {
-                        logger.debug("The given Data DB_0 is UNKNOWN; its value is: " + dataDB0InHexAsAnInt);
-                    }
-                } else if ((new Integer(0x20).byteValue() & 0xff) == statusInHexAsAsAnInt) {
-                    logger.debug("Here, a button has been released (normally, this button was the pressed one.)");
-                    // if (alarmIsActive) {
-                    // // The switch is used to simulate the smoke
-                    // // detector.
-                    // // No Alarm
-                    // logger.debug("No ALARM");
-                    //// reportFireNormalSituation();
-                    //// alarmIsActive = false;
-                    // }
-                } else {
-                    logger.debug("The given status field of this RPS telegram is UNKNOWN. This status was (as an int): "
-                            + statusInHexAsAsAnInt);
-                }
-
-            } else if ("213".equals(rorg)) {
-                // hex 0xd5 == int 213.
-                logger.debug("This event has been sent by a D5-wx-yz device.");
-                logger.debug(
-                        "FUNC, and TYPE are NOT sent by D5-wx-yz device. The system then assumes that the device is an D5-00-01.");
-                logger.debug(
-                        "In EnOcean_Equipment_Profiles_EEP_V2.61_public.pdf, pages 24, D5-00-01 -> 1BS Telegram, Contacts and Switches, Single Input Contact.");
-
-                // logger.debug("data.getBytes(): " + data.getBytes());
-                // logger.debug("Utils.bytesToHexString(data.getBytes()): "
-                // + Utils.bytesToHexString(data.getBytes()));
-                //
-                // logger.debug("data.getDbm(): " + data.getDbm());
-                // logger.debug("data.getDestinationId(): "
-                // + data.getDestinationId());
-                // logger.debug("data.getFunc(): " + data.getFunc());
-                //
-                // logger.debug("data.getPayloadBytes(): "
-                // + data.getPayloadBytes());
-                // Logger.d(TAG,
-                // "Utils.bytesToHexString(data.getPayloadBytes()): "
-                // + Utils.bytesToHexString(data.getPayloadBytes()));
-                //
-                // logger.debug("data.getRorg(): " + data.getRorg());
-                // logger.debug("data.getSecurityLevelFormat(): "
-                // + data.getSecurityLevelFormat());
-                // logger.debug("data.getSenderId(): " + data.getSenderId());
-                // logger.debug("data.getStatus(): " + data.getStatus());
-                // logger.debug("data.getSubTelNum(): " + data.getSubTelNum());
-                // logger.debug("data.getType(): " + data.getType());
-
-                if (8 == data.getPayloadBytes()[0]) {
-                    logger.debug("An opening has been detected.");
-                } else if (9 == data.getPayloadBytes()[0]) {
-                    logger.debug("A closing has been detected.");
-                } else if (0 == data.getPayloadBytes()[0]) {
-                    logger.debug("The LRN button has been pressed.");
-                } else {
-                    logger.debug("The given 1BS's Data DB_0 value (data.getPayloadBytes()[0]: "
-                            + data.getPayloadBytes()[0]
-                            + " doesn't correspond to anything in EnOcean's specs. There is a pb. The system doesn't know how to handle this message.");
-                }
-            } else {
-                logger.debug(
-                        "This event has NOT been sent by an A5-02-05 device, nor by a F6-wx-yz device, nor by a D5-wx-yz device. "
-                                + "RORG is NOT equal to a5, nor f6,nor d5 (0xa5 is equal to int 165; 0xf6 -> 246, 0xd5 -> 213).");
             }
 
         }

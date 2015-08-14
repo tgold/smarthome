@@ -47,6 +47,8 @@ import org.osgi.util.tracker.ServiceTrackerCustomizer;
  */
 public class EnOceanBaseDriver implements EnOceanPacketListener, ServiceTrackerCustomizer, EventHandler {
 
+    private static final String DEFAULT_PORT_TCM300 = "/dev/ttyAMA0";
+
     /** TAG */
     public static final String TAG = EnOceanBaseDriver.class.getName();
 
@@ -80,7 +82,7 @@ public class EnOceanBaseDriver implements EnOceanPacketListener, ServiceTrackerC
         eoHostRefs = new Hashtable(10);
 
         /* Register initial EnOceanHost */
-        String hostPath = System.getProperty("org.osgi.service.enocean.host.path", "/dev/ttyUSB0");
+        String hostPath = System.getProperty("org.osgi.service.enocean.host.path", DEFAULT_PORT_TCM300);
         Logger.i(TAG, "initial host path : " + hostPath);
         if (hostPath != null && hostPath != "") {
             if (hostPath.equals(":testcase:")) {
@@ -135,7 +137,7 @@ public class EnOceanBaseDriver implements EnOceanPacketListener, ServiceTrackerC
     public void radioPacketReceived(byte[] data) {
         Logger.d(TAG,
                 "radioPacketReceived(byte[] data - the data, and the optional data parts of an EnOcean packet/telegram: "
-                        + data + ")");
+                        + Utils.bytesToHexString(data) + ")");
         // The following line prints, for example for a 1BS telegram,
         // [DEBUG-EnOceanBaseDriver] data: d500008a92390001ffffffff3000
         Logger.d(TAG, "data: " + Utils.bytesToHexString(data));
@@ -317,8 +319,7 @@ public class EnOceanBaseDriver implements EnOceanPacketListener, ServiceTrackerC
         Logger.d(TAG, "Try to associate the message with a device and send to EventAdmin.");
         EnOceanDevice dev = getAssociatedDevice(msg);
         if (dev == null) {
-            Logger.e(
-                    TAG,
+            Logger.e(TAG,
                     "The system can NOT find any EnOceanDevice that could be associated to the message. The message can not then be broadcasted to event admin.");
         } else {
             if (dev instanceof EnOceanDeviceImpl) {
@@ -327,7 +328,8 @@ public class EnOceanBaseDriver implements EnOceanPacketListener, ServiceTrackerC
                 int rorg = implDev.getRorg();
                 int func = implDev.getFunc();
                 int type = implDev.getType();
-                Logger.d(TAG, "dev's rorg (e.g. int 165 means hex a5): " + rorg + ", func: " + func + ", type: " + type);
+                Logger.d(TAG,
+                        "dev's rorg (e.g. int 165 means hex a5): " + rorg + ", func: " + func + ", type: " + type);
                 msg.setFunc(func);
                 msg.setType(type);
                 implDev.setLastMessage(msg);
@@ -383,8 +385,8 @@ public class EnOceanBaseDriver implements EnOceanPacketListener, ServiceTrackerC
             String[] propertyNames = event.getPropertyNames();
             int i = 0;
             while (i < propertyNames.length) {
-                Logger.d(TAG, "propertyNames[" + i + "]: " + propertyNames[i] + ", event.getProperty(propertyNames["
-                        + i + "]): " + event.getProperty(propertyNames[i]));
+                Logger.d(TAG, "propertyNames[" + i + "]: " + propertyNames[i] + ", event.getProperty(propertyNames[" + i
+                        + "]): " + event.getProperty(propertyNames[i]));
                 i = i + 1;
             }
             if (event.getProperty(EnOceanEvent.PROPERTY_EXPORTED) != null) {
@@ -407,8 +409,8 @@ public class EnOceanBaseDriver implements EnOceanPacketListener, ServiceTrackerC
     }
 
     /**
-	 * 
-	 */
+     * 
+     */
     public void start() {
         try {
             host.startup();
@@ -418,8 +420,8 @@ public class EnOceanBaseDriver implements EnOceanPacketListener, ServiceTrackerC
     }
 
     /**
-	 * 
-	 */
+     * 
+     */
     public void stop() {
         unregisterDevices();
     }

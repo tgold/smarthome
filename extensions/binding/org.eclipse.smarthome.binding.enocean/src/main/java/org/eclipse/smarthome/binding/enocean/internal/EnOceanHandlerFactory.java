@@ -40,8 +40,9 @@ public class EnOceanHandlerFactory extends BaseThingHandlerFactory
 
     private Logger logger = LoggerFactory.getLogger(EnOceanHandler.class);
 
-    private final static Set<ThingTypeUID> SUPPORTED_THING_TYPES_UIDS = Sets
-            .newHashSet(EnOceanBindingConstants.THING_TYPE_F60201, EnOceanBindingConstants.THING_TYPE_A51003);
+    public final static Set<ThingTypeUID> SUPPORTED_THING_TYPES_UIDS = Sets.newHashSet(
+            EnOceanBindingConstants.THING_TYPE_F60201, EnOceanBindingConstants.THING_TYPE_F60201_ROLLERSHUTTER,
+            EnOceanBindingConstants.THING_TYPE_A51003);
 
     private EnOceanHost baseDriver;
 

@@ -3,6 +3,8 @@ package org.eclipse.smarthome.binding.enocean.internal.discovery;
 import java.util.Date;
 
 import org.apache.commons.lang.StringUtils;
+import org.eclipse.smarthome.binding.enocean.EnOceanBindingConstants;
+import org.eclipse.smarthome.binding.enocean.internal.EnOceanHandlerFactory;
 import org.eclipse.smarthome.binding.enocean.internal.Utils;
 import org.eclipse.smarthome.config.discovery.AbstractDiscoveryService;
 import org.eclipse.smarthome.config.discovery.DiscoveryResult;
@@ -28,9 +30,8 @@ public class EnOceanDeviceDiscoveryService extends AbstractDiscoveryService impl
 
     private BundleContext bc;
 
-    public EnOceanDeviceDiscoveryService(int timeout) throws IllegalArgumentException {
-        super(timeout);
-        // TODO Auto-generated constructor stub
+    public EnOceanDeviceDiscoveryService() throws IllegalArgumentException {
+        super(EnOceanHandlerFactory.SUPPORTED_THING_TYPES_UIDS, 15);
     }
 
     @Override
@@ -142,9 +143,18 @@ public class EnOceanDeviceDiscoveryService extends AbstractDiscoveryService impl
     }
 
     private String getDeviceTypeAsString(EnOceanDevice eod) {
-        String deviceType = Utils.bytesToHexString(Utils.intTo1Byte(eod.getRorg())) + "-"
-                + Utils.bytesToHexString(Utils.intTo1Byte(eod.getFunc())) + "-"
-                + Utils.bytesToHexString(Utils.intTo1Byte(eod.getType()));
+        String rorg = Utils.bytesToHexString(Utils.intTo1Byte(eod.getRorg()));
+        String func = Utils.bytesToHexString(Utils.intTo1Byte(eod.getFunc()));
+        String type = Utils.bytesToHexString(Utils.intTo1Byte(eod.getType()));
+
+        if ("f6".equalsIgnoreCase(rorg)) {
+            if ("ff".equalsIgnoreCase(type)) {
+                // assume F6-02-01 as default
+                func = "02";
+                type = "01";
+            }
+        }
+        String deviceType = rorg + "-" + func + "-" + type;
         return deviceType.toUpperCase();
     }
 
@@ -154,7 +164,8 @@ public class EnOceanDeviceDiscoveryService extends AbstractDiscoveryService impl
     }
 
     private ThingUID getUID(EnOceanDevice eod) {
-        ThingUID thingUID = new ThingUID(getDeviceTypeAsString(eod), getChipIdAsString(eod));
+        ThingUID thingUID = new ThingUID(EnOceanBindingConstants.BINDING_ID, getDeviceTypeAsString(eod),
+                getChipIdAsString(eod));
         return thingUID;
     }
 
