@@ -24,6 +24,7 @@ public class EnOceanBindingConstants {
     public static final ThingTypeUID THING_TYPE_F60201_ROLLERSHUTTER = new ThingTypeUID(BINDING_ID,
             "F6-02-01-RollerShutter");
     public final static ThingTypeUID THING_TYPE_A51003 = new ThingTypeUID(BINDING_ID, "A5-10-03");
+    public final static ThingTypeUID THING_TYPE_A51006 = new ThingTypeUID(BINDING_ID, "A5-10-06");
     public static final ThingTypeUID THING_TYPE_FSR14_4X = new ThingTypeUID(BINDING_ID, "FSR14-4x");
 
     // List of all Channel ids
@@ -32,6 +33,7 @@ public class EnOceanBindingConstants {
 
     public final static String CHANNEL_TEMPERATURE = "temperature";
     public final static String CHANNEL_SET_POINT = "setPoint";
+    public static final String CHANNEL_DAYNIGHT = "occupancy";
 
     public static final String CONFIG_PROPERTY_DEVICE_ID = "localID";
 

@@ -42,7 +42,7 @@ public class EnOceanHandlerFactory extends BaseThingHandlerFactory
 
     public final static Set<ThingTypeUID> SUPPORTED_THING_TYPES_UIDS = Sets.newHashSet(
             EnOceanBindingConstants.THING_TYPE_F60201, EnOceanBindingConstants.THING_TYPE_F60201_ROLLERSHUTTER,
-            EnOceanBindingConstants.THING_TYPE_A51003);
+            EnOceanBindingConstants.THING_TYPE_A51003, EnOceanBindingConstants.THING_TYPE_A51006);
 
     private EnOceanHost baseDriver;
 
@@ -269,8 +269,8 @@ public class EnOceanHandlerFactory extends BaseThingHandlerFactory
         if (service != null) {
             if (service instanceof EnOceanDevice) {
                 EnOceanDevice device = (EnOceanDevice) service;
-                logger.debug("> Registered a new EnOceanDevice : " + Utils.printUid(device.getChipId()) + ", device: "
-                        + device);
+                logger.debug("> Registered a new EnOceanDevice : " + Utils.getChipIdAsHexString(device.getChipId())
+                        + ", device: " + device);
                 return service;
             }
         }
@@ -283,8 +283,8 @@ public class EnOceanHandlerFactory extends BaseThingHandlerFactory
         if (service != null) {
             if (service instanceof EnOceanDevice) {
                 EnOceanDevice device = (EnOceanDevice) service;
-                logger.debug("> modifiedService method. device.getChipId(): " + Utils.printUid(device.getChipId())
-                        + ", device: " + device);
+                logger.debug("> modifiedService method. device.getChipId(): "
+                        + Utils.getChipIdAsHexString(device.getChipId()) + ", device: " + device);
             }
         }
     }
@@ -295,8 +295,8 @@ public class EnOceanHandlerFactory extends BaseThingHandlerFactory
         if (service != null) {
             if (service instanceof EnOceanDevice) {
                 EnOceanDevice device = (EnOceanDevice) service;
-                logger.debug("> removedService method. device.getChipId(): " + Utils.printUid(device.getChipId())
-                        + ", device: " + device);
+                logger.debug("> removedService method. device.getChipId(): "
+                        + Utils.getChipIdAsHexString(device.getChipId()) + ", device: " + device);
             }
         }
     }
